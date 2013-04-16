@@ -1,0 +1,64 @@
+#!/bin/sh
+scriptname=$(basename $0)
+pidfile=$1
+iface=$2
+interface=$3
+
+# Common FSM functions
+. /lib/fsm/fsm-common.sh
+
+fsm_list=$(uci get network.$interface.fsm_list)
+gossip_list=$(uci get network.$interface.gossip_list)
+
+#Overiding default fail function ;)
+fail() {
+    logger -t netifd-fsm "An error occured: $1" 1>&2
+    exit 1
+}
+
+[ $# -lt 3 ] && fail "Has to be run by netifd!"
+
+if [ -e $pidfile ]; then
+	pid=`cat $pidfile`
+	if kill -0 &>1 > /dev/null $pid; then
+		fail "Already running"
+	else
+		rm $pidfile
+	fi
+fi
+echo $$ > $pidfile
+# Create p2ptbl folder if not existant
+[ ! -d /var/p2ptbl/$interface ] && mkdir -p /var/p2ptbl/$interface
+
+logger -t fsm-inetable "Starting netifd-fsm for network $interface"
+while true; do
+	for fsm in $fsm_list
+	do
+		PState=/var/fsm/$fsm-$interface
+		PDef=/lib/fsm/$fsm
+		if [   -f $PDef/initial_state \
+			-a -d $PDef/watch \
+			-a -d $PDef/trans ]; then
+			if [ ! -f $PState ]; then
+				mkdir -p $(dirname $PState)
+				S=$(cat $PDef/initial_state)
+				[ -n "$S" ] || fail "fsm $fsm: initial state must not be empty"
+				echo $S >$PState
+			fi
+		else
+			fail "FSM $fsm does not exist"
+		fi
+		echo
+		logger -t netifd-fsm "Calling 'watch $PState $PDef $interface'"
+		watch $PState $PDef $interface
+	done
+	for gossip in $gossip_list
+	do
+		table=/var/p2ptbl/$interface/$gossip
+		[ ! -f $table ] && p2ptbl init  $table
+		logger -t p2ptbl "Gossiping p2ptable $gossip on interface $interface"
+		p2ptbl gossip $table 500 $iface
+	done
+	#Currently Hardcoded Interval, whole code needs to be changed into something parallel with individual sleep cycles
+	sleep 60
+done

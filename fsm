@@ -1,70 +1,10 @@
 #!/bin/sh -e
-
+interface=$1
 # paths to state file and definition dir
-PState=/var/fsm/$2
-PDef=/etc/fsm/$2
+PState=/var/fsm/$3-$interface
+PDef=/lib/fsm/$3
 
-random_sleep() {
-# sleeping for 0-55 sec might avoid race conditions
-sleep $(</dev/urandom tr -dc "0-5"| head -c2)
-}
-
-watch () {
-    SO=$(cat $PState)
-    SN=$(callOne $PDef/watch $SO "xxx" \
-	"./$SO
-         ./default
-         /bin/false") || fail "watch script failed or missing"
-    [ -n "$SN" ] || fail "watch script $S0 returned empty state name"
-    change $SN
-}
-
-change () {
-    SO=$(cat $PState)
-    SN=$1
-    if [ "$SO" != "$SN" ]; then
-	if [ -x $PDef/trans/$SO-$SN.trans ]; then
-	    # one script to handle whole transition
-	    callOne $PDef/trans $SO $SN \
-		"./$SO-$SN.trans" \
-		|| fail "state transition script failed"
-	else
-	    # seperate scripts for leaving and entering states
-	    callOne $PDef/trans $SO $SN \
-		"./$SO.leave
-                 ./default.leave
-                 /bin/true" \
-		|| fail "state leave script failed"
-	    callOne $PDef/trans $SO $SN \
-		"./$SN.enter
-                 ./default.enter
-                 /bin/true" \
-		|| fail "state enter script failed"
-
-	fi
-	echo $SN > $PState
-    fi
-}
-
-callOne () { # args: cwd arg1 arg2 cmdlist
-    echo "$4" | sed 's/ *//' | (
-	set -e
-	cd $1
-	while read cmd; do
-	    if [ -x "$cmd" ]; then
-		$cmd $2 $3 666<&-
-		exit $?
-	    fi
-	done )
-}
-
-lockState () {
-    # lock state file (neccessary also for watch, as it calls scripts
-    # that assume a certain state as active during their whole
-    # execution time)
-    exec 666<$1
-    flock -x 666
-}
+. /lib/fsm/fsm-common.sh
 
 fail() {
     echo "$1" 1>&2
@@ -73,12 +13,12 @@ fail() {
 
 printArgs () {
     fail "Usage:
-$0 get    fsm
-$0 watch  fsm
-$0 change fsm state"
+$0 uci-interface get    fsm
+$0 uci-interface watch  fsm
+$0 uci-interface change fsm state"
 }
 
-[ $# -lt 2 ] && printArgs
+[ $# -lt 3 ] && printArgs
 
 # check for minimal FSM definition
 if [   -f $PDef/initial_state \
@@ -91,22 +31,21 @@ if [   -f $PDef/initial_state \
 	echo $S >$PState
     fi
 else
-    fail "FSM $2 does not exist"
+    fail "FSM $3 does not exist"
 fi
 
-case "$1" in
+case "$2" in
     get)
 	cat $PState
 	;;
     watch)
-	random_sleep
 	lockState $PState
-	watch
+	watch $PState $PDef $interface
 	;;
     change)
-	[ -n "$3" ] || printArgs
+	[ -n "$4" ] || printArgs
 	lockState $PState
-	change $3
+	change $PState $PDef $4 $interface
 	;;
     *)
 	printArgs
