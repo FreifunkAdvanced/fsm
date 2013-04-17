@@ -10,9 +10,14 @@
 }
 
 proto_fsm_init_config() {
+	proto_config_add_string "net_robinson"
+	proto_config_add_string "net_fake"
+	proto_config_add_string "net_mesh"
+	proto_config_add_string "net_ip6ula"
 	proto_config_add_string "batman_iface"
 	proto_config_add_string "fsm_list"
 	proto_config_add_string "gossip_list"
+	proto_config_add_string "community_name"
 }
 
 proto_fsm_setup() {
