@@ -1,0 +1,36 @@
+#!/bin/sh -x
+exec 2>/tmp/fsm.script2.log-"$interface"
+interface=$2
+ip6addr=$3
+ip6netmask=$4
+ipaddr=$5
+netmask=$6
+# Copied from dhcp.script  :D
+[ -z "$1" ] && echo "Error: should be run by fsm" && exit 1
+
+. /lib/functions.sh
+. /lib/netifd/netifd-proto.sh
+
+setup_interface () {
+        proto_init_update "*" 1
+        [ -n "$ipaddr" ] && [ -n "$netmask" ] && proto_add_ipv4_address "$ipaddr" "$netmask"
+		proto_add_ipv6_address $ip6addr $ip6netmask
+        proto_send_update "$INTERFACE"
+
+}
+
+deconfig_interface() {
+        proto_init_update "*" 0
+        proto_send_update "$INTERFACE"
+}
+
+case "$1" in
+        deconfig)
+                deconfig_interface
+        ;;
+        configure)
+                setup_interface
+        ;;
+esac
+
+exit 0

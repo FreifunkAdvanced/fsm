@@ -6,8 +6,8 @@ watch () {
     SN=$(callOne $PDef/watch $SO "xxx" \
 	"./$SO
          ./default
-         /bin/false") \
-		 "$SP" \
+         /bin/false" \
+		 "$SP") \
 		 || fail "watch script failed or missing"
     [ -n "$SN" ] || fail "watch script $S0 returned empty state name"
     change $PState $PDef $SN $SP

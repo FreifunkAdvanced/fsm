@@ -20,7 +20,7 @@ fail() {
 
 if [ -e $pidfile ]; then
 	pid=`cat $pidfile`
-	if kill -0 &>1 > /dev/null $pid; then
+	if [ -d /proc/$pid ]; then
 		fail "Already running"
 	else
 		rm $pidfile
@@ -29,7 +29,8 @@ fi
 echo $$ > $pidfile
 # Create p2ptbl folder if not existant
 [ ! -d /var/p2ptbl/$interface ] && mkdir -p /var/p2ptbl/$interface
-
+# Remove old PState file(s) for this interface
+rm -f /var/fsm/*-$interface
 logger -t fsm-inetable "Starting netifd-fsm for network $interface"
 while true; do
 	for fsm in $fsm_list
