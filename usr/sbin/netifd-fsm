@@ -31,6 +31,24 @@ echo $$ > $pidfile
 [ ! -d /var/p2ptbl/$interface ] && mkdir -p /var/p2ptbl/$interface
 # Remove old PState file(s) for this interface
 rm -f /var/fsm/*-$interface
+# Remove dnsmasq.conf if exists, FSM will create a symlink to /tmp for dynamic configuration without writing changes to uci config files
+
+if [ ! -h /etc/dnsmasq.conf ]; then
+	# Remove config if existant
+	[ -f /etc/dnsmasq.conf ] && rm -f /etc/dnsmasq.conf
+	touch /tmp/dnsmasq.conf
+	ln -s /tmp/dnsmasq.conf /etc/dnsmasq.conf
+	cat <<EOF > /tmp/dnsmasq.conf
+dhcp-hostsfile=/tmp/dhcp.hostconfig
+
+EOF
+elif [ -h /etc/dnsmasq.conf ]; then
+	# Remove old interface settings from file
+	sed \
+    -e "/$interface settings/d" \
+    -i "/tmp/dnsmasq.conf"
+fi
+
 logger -t fsm-inetable "Starting netifd-fsm for network $interface"
 while true; do
 	for fsm in $fsm_list
