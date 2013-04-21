@@ -42,11 +42,16 @@ if [ ! -h /etc/dnsmasq.conf ]; then
 dhcp-hostsfile=/tmp/dhcp.hostconfig
 
 EOF
-elif [ -h /etc/dnsmasq.conf ]; then
+elif [ -s /tmp/dnsmasq.conf ]; then
 	# Remove old interface settings from file
 	sed \
     -e "/$interface settings/d" \
     -i "/tmp/dnsmasq.conf"
+else 
+	cat <<EOF > /tmp/dnsmasq.conf
+dhcp-hostsfile=/tmp/dhcp.hostconfig
+
+EOF
 fi
 
 logger -t fsm-inetable "Starting netifd-fsm for network $interface"
