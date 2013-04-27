@@ -72,7 +72,6 @@ while true; do
 		else
 			fail "FSM $fsm does not exist"
 		fi
-		echo
 		logger -t netifd-fsm "Calling 'watch $PState $PDef $interface'"
 		watch $PState $PDef $interface
 	done
