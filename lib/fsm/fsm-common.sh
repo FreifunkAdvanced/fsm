@@ -8,8 +8,8 @@ watch () {
          ./default
          /bin/false" \
 		 "$SP") \
-		 || fail "watch script failed or missing"
-    [ -n "$SN" ] || fail "watch script $S0 returned empty state name"
+		 || fail "Watch script failed or missing"
+    [ -n "$SN" ] || fail "Watch script $S0 returned empty state name"
     change $PState $PDef $SN $SP
 }
 
@@ -25,7 +25,7 @@ change () {
 	    callOne $PDef/trans $SO $SN \
 		"./$SO-$SN.trans" \
 		"$SP" \
-		|| fail "state transition script failed"
+		|| fail "State transition script failed"
 	else
 	    # seperate scripts for leaving and entering states
 	    callOne $PDef/trans $SO $SN \
@@ -33,13 +33,13 @@ change () {
                  ./default.leave
                  /bin/true" \
 		"$SP" \
-		|| fail "state leave script failed"
+		|| fail "State leave script failed"
 	    callOne $PDef/trans $SO $SN \
 		"./$SN.enter
                  ./default.enter
                  /bin/true" \
 		"$SP" \
-		|| fail "state enter script failed"
+		|| fail "State enter script failed"
 
 	fi
 	echo $SN > $PState
@@ -67,6 +67,6 @@ lockState () {
 }
 
 fail() {
-    echo "$1" 1>&2
+    echo "[FAILURE]: $1" 1>&2
     exit 1
 }

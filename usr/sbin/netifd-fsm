@@ -3,16 +3,30 @@ scriptname=$(basename $0)
 pidfile=$1
 iface=$2
 interface=$3
+logfile=/tmp/fsmlogfile-$interface
 
 # Common FSM functions
 . /lib/fsm/fsm-common.sh
 
-fsm_list=$(uci get network.$interface.fsm_list)
-gossip_list=$(uci get network.$interface.gossip_list)
+fsm_list=$(uci -q get fsm.$interface.fsm_list)
+gossip_list=$(uci -q get fsm.$interface.gossip_list)
+
+logmessage() {
+	local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+	if [ "$(ls -l $logfile | awk '{print $5}')" -ge 100000 ]; then
+		logger -t netifd-fsm "[$interface]: Logfile of 100kb limit reached. Rotating log"
+		echo "$timestamp - netifd-fsm [$interface]: Logfile of 100kb limit reached. Rotating log" 1>> "$logfile"
+		[ -f "$logfile.1.gz" ] && rm -f "$logfile.1.gz"
+		mv $logfile $logfile.1
+		gzip $logfile.1
+	fi
+	logger -t netifd-fsm "[$interface]: $1"
+	echo "$timestamp - netifd-fsm [$interface]: $1" 1>> "$logfile"
+}
 
 #Overiding default fail function ;)
 fail() {
-    logger -t netifd-fsm "An error occured: $1" 1>&2
+    logmessage "[FAILURE]: $1" 1>&2
     exit 1
 }
 
@@ -31,8 +45,18 @@ echo $$ > $pidfile
 [ ! -d /var/p2ptbl/$interface ] && mkdir -p /var/p2ptbl/$interface
 # Remove old PState file(s) for this interface
 rm -f /var/fsm/*-$interface
-# Remove dnsmasq.conf if exists, FSM will create a symlink to /tmp for dynamic configuration without writing changes to uci config files
 
+# Create config cache folders if none existant or clear the cache
+for fsm in $(echo $fsm_list)
+do
+	if [ ! -d /var/$fsm/$interface/ ]; then
+		mkdir -p /var/$fsm/$interface/
+	else
+		rm -f /var/$fsm/$interface/*
+	fi
+done
+
+# Remove dnsmasq.conf if exists, FSM will create a symlink to /tmp for dynamic configuration without writing changes to uci config files
 if [ ! -h /etc/dnsmasq.conf ]; then
 	# Remove config if existant
 	[ -f /etc/dnsmasq.conf ] && rm -f /etc/dnsmasq.conf
@@ -54,9 +78,9 @@ dhcp-hostsfile=/tmp/dhcp.hostconfig
 EOF
 fi
 
-logger -t fsm-inetable "Starting netifd-fsm for network $interface"
+logmessage "Starting netifd-fsm daemon"
 while true; do
-	for fsm in $fsm_list
+	for fsm in $(echo $fsm_list)
 	do
 		PState=/var/fsm/$fsm-$interface
 		PDef=/lib/fsm/$fsm
@@ -72,14 +96,14 @@ while true; do
 		else
 			fail "FSM $fsm does not exist"
 		fi
-		logger -t netifd-fsm "Calling 'watch $PState $PDef $interface'"
+		logmessage "Calling 'watch $PState $PDef $interface'"
 		watch $PState $PDef $interface
 	done
 	for gossip in $gossip_list
 	do
 		table=/var/p2ptbl/$interface/$gossip
 		[ ! -f $table ] && p2ptbl init  $table
-		logger -t p2ptbl "Gossiping p2ptable $gossip on interface $interface"
+		logmessage "Gossiping p2ptable $gossip on interface $interface"
 		p2ptbl gossip $table 500 $iface
 	done
 	#Currently Hardcoded Interval, whole code needs to be changed into something parallel with individual sleep cycles

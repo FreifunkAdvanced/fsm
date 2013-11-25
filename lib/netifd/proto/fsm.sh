@@ -10,14 +10,7 @@
 }
 
 proto_fsm_init_config() {
-	proto_config_add_string "net_robinson"
-	proto_config_add_string "net_fake"
-	proto_config_add_string "net_mesh"
-	proto_config_add_string "net_ip6ula"
-	proto_config_add_string "batman_iface"
-	proto_config_add_string "fsm_list"
-	proto_config_add_string "gossip_list"
-	proto_config_add_string "community_name"
+	proto_config_add_string "dummy"
 }
 
 proto_fsm_setup() {
@@ -25,9 +18,6 @@ proto_fsm_setup() {
 	local config="$1"
 	local iface="$2"
 
-	local net_mesh net_robinson net_fake net_ip6ula hostname interval
-	json_get_vars net_mesh net_robinson net_fake net_ip6ula hostname interval
-	
 	proto_export "INTERFACE=$config"
 	proto_run_command "$interface" start-stop-daemon -S -x \
 		netifd-fsm \
