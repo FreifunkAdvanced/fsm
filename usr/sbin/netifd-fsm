@@ -78,6 +78,9 @@ dhcp-hostsfile=/tmp/dhcp.hostconfig
 EOF
 fi
 
+logmessage "Restarting dnsmasq to make sure old settings are no longer active"
+/etc/init.d/dnsmasq restart || true
+
 logmessage "Starting netifd-fsm daemon"
 while true; do
 	for fsm in $(echo $fsm_list)
