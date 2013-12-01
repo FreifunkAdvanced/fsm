@@ -3,7 +3,7 @@ scriptname=$(basename $0)
 pidfile=$1
 iface=$2
 interface=$3
-logfile=/tmp/fsmlogfile-$interface
+logfile=/tmp/netifd-fsm-$interface.log
 
 # Common FSM functions
 . /lib/fsm/fsm-common.sh
