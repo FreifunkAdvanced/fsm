@@ -78,6 +78,14 @@ dhcp-hostsfile=/tmp/dhcp.hostconfig
 EOF
 fi
 
+# Remove /etc/resolv.conf link if it doesn't point to /tmp/resolv.conf.auto
+# We will be using only remote DNS servers for local querries.
+
+if [ $(readlink /etc/resolv.conf) == "/tmp/resolv.conf" ]; then
+	rm -f /etc/resolv.conf
+	ln -s /tmp/resolv.conf.auto /etc/resolv.conf
+fi
+
 logmessage "Restarting dnsmasq to make sure old settings are no longer active"
 /etc/init.d/dnsmasq restart || true
 
